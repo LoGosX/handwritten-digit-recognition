@@ -4,6 +4,7 @@ from math import sqrt
 from load_image_data import load_data, DATASETS_PATH
 import visualize
 import time
+import matplotlib.pyplot as plt
 
 def main():
     
@@ -13,13 +14,13 @@ def main():
     x_train, y_train, x_test, y_test = load_data()
     
     #reduce number of training examples to speed up the calculations
-    x_train = x_train[:1000]
-    y_train = y_train[:1000]
+    x_train = x_train[:]
+    y_train = y_train[:]
 
     #display it to check if everything is ok
     print('Visualizing first 25 examples')
     visualize.display_data(x_train, 5, 5)
-    
+    plt.show()
 
     #1 pick a network architecture
     number_of_inputs = 28 * 28 #dimensions of the images
@@ -46,7 +47,7 @@ def main():
     print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
     #training neural network
     start = time.perf_counter()
-    nn.train(x_train, y_train, 1000, 0.1, 1)
+    nn.train(x_train, y_train, 20, 0.3, 1)
     print("Trained NN in %fs." % (time.perf_counter() - start))
 
     #make predictions
@@ -65,6 +66,21 @@ def main():
 
     #plot cost for each iteration
     visualize.plot_cost(nn.errors)
+    plt.show()
+    plt.close()
+    
+    print("Interactive predictions. Press any key to proceed. Press mouse to stop.")
+    m = x_test.shape[0]
+    for i in range(m):
+        x = x_test[[i]]
+        label = y_test[[i]]
+        prediction = np.argmax(nn.predict(x))
+        print("Label: {}. Prediction: {}. Click any key to stop.".format(label, prediction))
+        visualize.display_digit(x.reshape((28,28)), label, prediction)
+        plt.draw()
+        if plt.waitforbuttonpress() is False:
+            break
+            
 
 if __name__ == "__main__":
     main()
