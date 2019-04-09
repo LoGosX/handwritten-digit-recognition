@@ -1,5 +1,5 @@
 import numpy as np
-from neural_network import OneLayerNeuralNetwork
+from neural_network import OneLayerNeuralNetwork, MultiLayerNeuralNetwork
 from math import sqrt
 from load_image_data import load_data, DATASETS_PATH
 import visualize
@@ -7,8 +7,6 @@ import time
 import matplotlib.pyplot as plt
 
 def main():
-    
-
     #load train and test data
     print('Loading test and train data from "%s".' % DATASETS_PATH)
     x_train, y_train, x_test, y_test = load_data()
@@ -30,8 +28,9 @@ def main():
     
     print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units each (not including a bias unit)\nepsilon used to initialize weights: {}".format(number_of_inputs, number_of_outputs, 1, number_of_hidden_units, epsilon))
     #Neural Network used to train data
-    nn = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units, epsilon = epsilon)
-
+    nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units, epsilon = epsilon, random_seed = 1)
+    nn2 = MultiLayerNeuralNetwork([number_of_inputs, number_of_hidden_units, number_of_outputs], epsilon, 1)
+    
     #transforming each training and test example to 1D
     x_train = x_train.reshape((x_train.shape[0], x_train.shape[1] * x_train.shape[2]))
     x_test = x_test.reshape((x_test.shape[0], x_test.shape[1] * x_test.shape[2]))
@@ -47,25 +46,35 @@ def main():
     print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
     #training neural network
     start = time.perf_counter()
-    nn.train(x_train, y_train, 20, 0.3, 1)
+    params = (x_train, y_train, 10, 0.1, 0.1)
+    nn1.train(*params)
+    nn2.train(*params)
     print("Trained NN in %fs." % (time.perf_counter() - start))
 
     #make predictions
-    predictions = nn.predict(x_test)
-    predictions = np.argmax(predictions, 1)
-    m = predictions.size
-    hits = 0
-    misses = 0
-    print(predictions.shape, y_test.shape)
+    predictions1 = nn1.predict(x_test)
+    predictions1 = np.argmax(predictions1, 1)
+    predictions2 = nn2.predict(x_test)
+    predictions2 = np.argmax(predictions2, 1)
+    m = predictions1.size
+    hits = [0, 0]
+    misses = [0, 0]
     for t in range(m):
-        if predictions[t] == y_test[t]:
-            hits += 1
+        if predictions1[t] == y_test[t]:
+            hits[0] += 1
         else:
-            misses += 1
-    print("{} hits, {} misses. {}% accuracy.".format(hits, misses, hits / m * 100))
+            misses[0] += 1
+        if predictions2[t] == y_test[t]:
+            hits[1] += 1
+        else:
+            misses[1] += 1
+    print("OneLayerNN:'n{} hits, {} misses. {}% accuracy.\n".format(hits[0], misses[0], hits[0] / m * 100))
+    print("MultiLayerNN:'n{} hits, {} misses. {}% accuracy.\n".format(hits[1], misses[1], hits[1] / m * 100))
+        
+
 
     #plot cost for each iteration
-    visualize.plot_cost(nn.errors)
+    visualize.plot_cost(nn1.errors)
     plt.show()
     plt.close()
     
@@ -74,7 +83,7 @@ def main():
     for i in range(m):
         x = x_test[[i]]
         label = y_test[[i]]
-        prediction = np.argmax(nn.predict(x))
+        prediction = np.argmax(nn1.predict(x))
         print("Label: {}. Prediction: {}. Click any key to stop.".format(label, prediction))
         visualize.display_digit(x.reshape((28,28)), label, prediction)
         plt.draw()
