@@ -6,6 +6,7 @@ import visualize
 import time
 import matplotlib.pyplot as plt
 
+
 def main():
     #load train and test data
     print('Loading test and train data from "%s".' % DATASETS_PATH)
@@ -15,6 +16,7 @@ def main():
     x_train = x_train[:]
     y_train = y_train[:]
 
+
     #display it to check if everything is ok
     print('Visualizing first 25 examples')
     visualize.display_data(x_train, 5, 5)
@@ -23,19 +25,21 @@ def main():
     #1 pick a network architecture
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
-    number_of_hidden_units = 10 * 10 #number of hidden units in 1'st (and, for now, only) layer
+    number_of_hidden_units = 10 #number of hidden units in 1'st (and, for now, only) layer
     epsilon = sqrt(6)/sqrt(number_of_inputs + number_of_outputs) #epsilon used to initialize weights in NN. Every connection will be randomly initialized by a number from range [-epsilon, epsilon]
     
     print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units each (not including a bias unit)\nepsilon used to initialize weights: {}".format(number_of_inputs, number_of_outputs, 1, number_of_hidden_units, epsilon))
     #Neural Network used to train data
-    nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units, epsilon = epsilon, random_seed = 1)
-    nn2 = MultiLayerNeuralNetwork([number_of_inputs, number_of_hidden_units, number_of_outputs], epsilon, 1)
+    #nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units, epsilon = epsilon, random_seed = 0)
+    nn1 = MultiLayerNeuralNetwork([number_of_inputs, number_of_hidden_units, number_of_hidden_units, number_of_outputs], epsilon = epsilon, random_seed = 0)
     
     #transforming each training and test example to 1D
     x_train = x_train.reshape((x_train.shape[0], x_train.shape[1] * x_train.shape[2]))
     x_test = x_test.reshape((x_test.shape[0], x_test.shape[1] * x_test.shape[2]))
 
-    
+    #x_train = x_train / 255 # "feature scaling"
+    #x_test = x_test / 255 # "feature scaling"
+
     #transforming each label to a vector of 0's, where vector[label] = 1
     #TODO: vectorize the loop
     tmp = np.zeros((y_train.size, number_of_outputs))
@@ -43,34 +47,24 @@ def main():
         tmp[i, int(y_train[i])] = 1
     y_train = tmp
     
+    if True:
+        print("Gradient checking\nApprox | Calculated by NN")
+        approx, grad = nn1.gradient_checking(x_train[0:100], y_train[0:100], 0.1)
+        for i in range(approx.size):
+            a = approx[i]
+            g = grad[i]
+            rd = a - g
+            print("{:5f}\t{:5f}\t{}".format(approx[i], grad[i], rd))
     print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
     #training neural network
     start = time.perf_counter()
-    params = (x_train, y_train, 10, 0.1, 0.1)
+    params = (x_train, y_train, 20, 0.3, 1)
     nn1.train(*params)
-    nn2.train(*params)
     print("Trained NN in %fs." % (time.perf_counter() - start))
 
     #make predictions
-    predictions1 = nn1.predict(x_test)
-    predictions1 = np.argmax(predictions1, 1)
-    predictions2 = nn2.predict(x_test)
-    predictions2 = np.argmax(predictions2, 1)
-    m = predictions1.size
-    hits = [0, 0]
-    misses = [0, 0]
-    for t in range(m):
-        if predictions1[t] == y_test[t]:
-            hits[0] += 1
-        else:
-            misses[0] += 1
-        if predictions2[t] == y_test[t]:
-            hits[1] += 1
-        else:
-            misses[1] += 1
-    print("OneLayerNN:'n{} hits, {} misses. {}% accuracy.\n".format(hits[0], misses[0], hits[0] / m * 100))
-    print("MultiLayerNN:'n{} hits, {} misses. {}% accuracy.\n".format(hits[1], misses[1], hits[1] / m * 100))
-        
+    hits, misses = nn1.make_predictions(x_test, y_test)
+    print("OneLayerNN:\n{} hits, {} misses. {}% accuracy.\n".format(hits, misses, hits / (hits + misses) * 100))    
 
 
     #plot cost for each iteration
