@@ -48,7 +48,7 @@ def main():
         tmp[i, int(y_train[i])] = 1
     y_train = tmp
     
-    if True:
+    if False:
         print("Gradient checking\nApprox | Calculated by NN")
         grad, approx, mean = gradient_checking(x_train[0:100], y_train[0:100], layers, 0)
         for i in range(approx.size):
@@ -57,7 +57,7 @@ def main():
     print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
     #training neural network
     start = time.perf_counter()
-    params = (x_train, y_train, 40, 0.1, 0.1)
+    params = (x_train, y_train, 20, 0.3, 0.1)
     nn1.train(*params)
     print("Trained NN in %fs." % (time.perf_counter() - start))
 
