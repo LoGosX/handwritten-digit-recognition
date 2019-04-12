@@ -1,5 +1,6 @@
 
 import numpy as np
+from math import sqrt
 
 class OneLayerNeuralNetwork:
     '''
@@ -112,24 +113,22 @@ class OneLayerNeuralNetwork:
 
 class MultiLayerNeuralNetwork:
 
-    def __init__(self, layers, epsilon, random_seed = None):
+    def __init__(self, layers, epsilon = None, random_seed = None):
+        if epsilon is None:
+            epsilon = sqrt(6)/sqrt(layers[0] + layers[-1])
+    
         state = np.random.RandomState(random_seed)
-        self.theta_vector = state.rand(sum((l + 1) * nl for l, nl in zip(layers, layers[1:])), 1) * 2 * epsilon - epsilon
-        self.thetas = self.thete_vector_to_list(self.theta_vector, layers)
         self.errors = []
         self.layers = layers
-
-    
-    def thete_vector_to_list(self, theta_vector, layers):
-        i = 0
         thetas = []
         for l, nl in zip(layers, layers[1:]):
-            l += 1
-            i_e = i + l * nl
-            theta = theta_vector[i:i_e].reshape((nl, l))
+            theta = (state.rand(nl, l + 1) * 2 - 1) * epsilon
             thetas.append(theta)
-            i = i_e
-        return thetas
+        self.thetas = thetas
+
+    @property
+    def theta_vector(self):
+        return np.concatenate([t.flatten() for t in self.thetas])
 
     def sigmoid(self, z):
         return 1 / (1 + np.exp(-z))
@@ -150,7 +149,7 @@ class MultiLayerNeuralNetwork:
         c1 = -1/m * np.sum(np.sum(
                     y * np.log(h_x) + (1-y) * np.log(1 - h_x)
                 ))
-        c2 = regularization_parameter / (2 * m) * np.sum(np.sum(theta_vector ** 2))
+        c2 = regularization_parameter * np.sum(np.sum(theta_vector ** 2)) / (2 * m)
         return c1 + c2
 
     def theta_grad(self, X, y, regularization_parameter, thetas = None):
@@ -158,19 +157,22 @@ class MultiLayerNeuralNetwork:
             thetas = self.thetas
         m = y.shape[0] #number of examples
         D = [np.zeros(t.shape) for t in thetas]
-        AZ = self.forward_propagation(X)
         for t in range(m):
-            A = AZ[::2]
-            A = [a[[t]].T for a in A]
+            A = self.forward_propagation(X[[t]])
+            A = [a.T for a in A]
             yt = y[[t]].T
             
-            deltas = [A[-1] - yt]
-            for theta, a in zip(thetas[::-1], A[-2:0:-1]):
-                delta = theta.T @ deltas[-1] * a * (1 - a)
-                delta = delta[1:,:]
-                deltas.append(delta)
-            for d, delta, a in zip(D, deltas[::-1], A):
-                d += delta @ a.T
+            L = len(self.layers)
+            deltas = [None] * L
+            deltas[L - 1] = A[-1] - yt
+            for l in range(L-2, 0, -1):
+                
+                deltas[l] = thetas[l].T @ deltas[l+1] * A[l] * (1 - A[l])
+                deltas[l] = deltas[l][1:,:]
+
+            for l in range(L-1):
+                D[l] += deltas[l+1] @ A[l].T
+
         theta_grads = [d / m for d in D]
         for theta_grad, theta in zip(theta_grads, thetas):
             theta_grad[:, 1:] += regularization_parameter / m * theta[:, 1:]
@@ -186,7 +188,7 @@ class MultiLayerNeuralNetwork:
             z = a @ theta.T
             a = self.sigmoid(z)
             a = np.concatenate([np.ones((m, 1)), a], 1)
-            ret.extend([z, a])
+            ret.append(a)
 
         h_x = ret[-1]
         h_x = h_x[:, 1:] #remove bias unit
@@ -208,26 +210,21 @@ class MultiLayerNeuralNetwork:
         *_, h_x = self.forward_propagation(X, thetas)
         return h_x
 
-    def gradient_checking(self, X, y, regularization_parameter):
-        #TODO: optimize gradient checking? Maybe not neceesary
-        n = self.theta_vector.shape[0]
+    def theta_grad_approx(self, X, y, regularization_parameter):
+        epsilon = 1e-3
         m = X.shape[0]
-        theta_approx = np.copy(self.theta_vector)
-        theta_grad_approx = np.zeros(theta_approx.size)
-        thetas = self.thete_vector_to_list(theta_approx, self.layers)
-        eps = 1e-4
-        for i in range(n):
-            print(i,'/', n)
-            eps_vec = np.zeros((n, 1))
-            eps_vec[i] = eps
-            cost = (self.cost_function(X, y, regularization_parameter, theta_approx + eps_vec, thetas) - 
-                self.cost_function(X, y, regularization_parameter, theta_approx - eps_vec, thetas)) / (2 * eps) 
-            theta_grad_approx[i] += cost
-            theta_grad_approx[i] += regularization_parameter / m * self.theta_vector[i]
-        thetas = self.thete_vector_to_list(theta_approx, self.layers)
-        theta_grad = self.theta_grad(X, y, regularization_parameter)
-        theta_grad = np.concatenate([t.flatten() for t in theta_grad])
-        return theta_grad_approx, theta_grad
+        theta_grads = [np.zeros(t.shape) for t in self.thetas]
+        for l in range(len(theta_grads)):
+            for i in range(theta_grads[l].shape[0]):
+                for j in range(theta_grads[l].shape[1]):
+                    self.thetas[l][i][j] += epsilon
+                    cost1 = self.cost_function(X, y, regularization_parameter)
+                    self.thetas[l][i][j] -= 2 * epsilon
+                    cost2 = self.cost_function(X, y, regularization_parameter)
+                    self.thetas[l][i][j] += epsilon
+                    theta_grads[l][i][j] = (cost1 - cost2) / (2 * epsilon) + regularization_parameter * self.thetas[l][i][j]
+                    #print(l, i, j, theta_grads[l][i][j])
+        return theta_grads
 
     def save(self):
         theta_vec = np.concatenate([theta.flatten() for theta in self.thetas])
@@ -245,3 +242,12 @@ class MultiLayerNeuralNetwork:
             else:
                 misses += 1
         return hits, misses
+
+
+def gradient_checking(X, y, layers, regularization_parameter = 0.1):
+    nn = MultiLayerNeuralNetwork(layers)
+    grad = nn.theta_grad(X, y, regularization_parameter)
+    grad_approx = nn.theta_grad_approx(X, y, regularization_parameter)
+    grad = np.concatenate([x.flatten() for x in grad])
+    grad_approx = np.concatenate([x.flatten() for x in grad_approx])
+    return grad, grad_approx, np.mean((grad - grad_approx))
