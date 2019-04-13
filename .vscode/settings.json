@@ -1,4 +1,4 @@
 {
-    "python.pythonPath": "C:\\Users\\Maciej\\Anaconda3\\python.exe",
+    "python.pythonPath": "C:\\Users\\Maciej\\Anaconda3\\envs\\handwritten_digits_recognition\\python.exe",
     "python.linting.pylintEnabled": true
 }
