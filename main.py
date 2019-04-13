@@ -12,10 +12,8 @@ def main():
     print('Loading test and train data from "%s".' % DATASETS_PATH)
     x_train, y_train, x_test, y_test = load_data()
     
-    #reduce number of training examples to speed up the calculations
-    x_train = x_train[:]
-    y_train = y_train[:]
-
+    x_train = x_train / 255
+    x_test = x_test / 255
 
     #display it to check if everything is ok
     print('Visualizing first 25 examples')
@@ -25,13 +23,13 @@ def main():
     #1 pick a network architecture
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
-    number_of_hidden_units = [100, 100] #number of hidden units in 1'st (and, for now, only) layer
+    number_of_hidden_units = [16, 16] #number of hidden units in 1'st (and, for now, only) layer
     epsilon = sqrt(6)/sqrt(number_of_inputs + number_of_outputs) #epsilon used to initialize weights in NN. Every connection will be randomly initialized by a number from range [-epsilon, epsilon]
-    
-    print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units each (not including a bias unit)\nepsilon used to initialize weights: {}".format(number_of_inputs, number_of_outputs, 1, number_of_hidden_units, epsilon))
-    #Neural Network used to train data
-    #nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units, epsilon = epsilon, random_seed = 0)
     layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
+
+    print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units (not including a bias units)\nepsilon used to initialize weights: {}".format(number_of_inputs, number_of_outputs, len(layers), number_of_hidden_units, epsilon))
+    #Neural Network used to train data
+    #nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units[0], epsilon = epsilon, random_seed = 0)
     nn1 = MultiLayerNeuralNetwork(layers, epsilon = epsilon, random_seed = 0)
     
     #transforming each training and test example to 1D
@@ -47,7 +45,7 @@ def main():
     for i in range(tmp.shape[0]):
         tmp[i, int(y_train[i])] = 1
     y_train = tmp
-    
+    print(y_train)
     if False:
         print("Gradient checking\nApprox | Calculated by NN")
         grad, approx, mean = gradient_checking(x_train[0:100], y_train[0:100], layers, 0)
@@ -57,8 +55,11 @@ def main():
     print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
     #training neural network
     start = time.perf_counter()
-    params = (x_train, y_train, 20, 0.3, 0.1)
-    nn1.train(*params)
+    params = (x_train, y_train, 40, 10, 0)
+    try:
+        nn1.train(*params)
+    except Exception as e:
+        pass
     print("Trained NN in %fs." % (time.perf_counter() - start))
 
     #make predictions
