@@ -11,13 +11,14 @@ GRADIENT_CHECKING = True
 def gradient_checking(nn, X, y, regularization_parameter):
     grad = nn.theta_grad(X, y, regularization_parameter)
     grad_approx = nn.theta_grad_approx(X, y, regularization_parameter)
-    
-    grad = np.concatenate([x.flatten() for x in grad])
-    grad_approx = np.concatenate([x.flatten() for x in grad_approx])
-    for i in range(grad.shape[0]):
-        print("{:5f}\t{:5f}\t{}".format(grad[i], grad_approx[i], '!' if abs(grad[i] - grad_approx[i]) >= 0.001 else "ok" ))
-    return np.max(grad - grad_approx)
-
+    maks = -10000
+    for l in range(len(grad)):
+        print('-' * 20)
+        for i in range(grad[l].shape[0]):
+            for j in range(grad[l].shape[1]):
+                maks = max(maks, abs(grad[l][i][j] - grad_approx[l][i][j]))
+                print("({:3d},{:3d},{:3d}) {:5f}\t{:5f}\t{}".format(l,i,j, grad[l][i][j], grad_approx[l][i][j], '!' if abs(grad[l][i][j] - grad_approx[l][i][j]) >= 0.0001 else "ok" ))
+    return maks
 
 def main():
     #load train and test data
@@ -49,8 +50,8 @@ def main():
     #1 pick a network architecture
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
-    number_of_hidden_units = [16, 16] #number of hidden units in 1'st (and, for now, only) layer
-    epochs = 0
+    number_of_hidden_units = [8, 4] #number of hidden units in 1'st (and, for now, only) layer
+    epochs = 5 
     learning_rate = 0.3
     regularization_parameter = 0.1
     layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
@@ -62,7 +63,7 @@ def main():
     
     if GRADIENT_CHECKING:
         print("Performing gradient checking")
-        max_err = gradient_checking(nn1, x_train[0:10], y_train[0:10], regularization_parameter)
+        max_err = gradient_checking(nn1, x_train[[0]], y_train[[0]], regularization_parameter)
         print("Max difference in calculated gradients:", max_err)
 
     #x_train = x_train / 255 # "feature scaling"
@@ -96,7 +97,7 @@ def main():
         label = y_test[i]
         prediction = np.argmax(nn1.predict(x))
         print("Label: {}. Prediction: {}. Click any key to stop.".format(label, prediction))
-        visualize.display_digit(x.reshape((28,28)), label, prediction)
+        visualize.display_digit(x[:, 1:].reshape((28,28)), label, prediction)
         plt.draw()
         if plt.waitforbuttonpress() is False:
             break

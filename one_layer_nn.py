@@ -1,5 +1,6 @@
 import numpy as np
 from math import sqrt
+from tqdm import trange
 
 
 class OneLayerNeuralNetwork:
@@ -7,8 +8,9 @@ class OneLayerNeuralNetwork:
     One layer Neural Network
     """
 
-    def __init__(self, num_inputs, num_hidden, num_outputs, epsilon, random_seed = None):
+    def __init__(self, num_inputs, num_hidden, num_outputs, random_seed = None):
         state = np.random.RandomState(random_seed)
+        epsilon = 1
         #matrix of weights, used to calculate activation values in layer 2 in respect to values in layer 1 (input)
         self.theta1 = state.rand(num_hidden, num_inputs + 1) * 2 * epsilon - epsilon
         #matrix of weights used to calculate activation values on layer 3 (output layer)
@@ -101,13 +103,20 @@ class OneLayerNeuralNetwork:
                 misses += 1
         return hits, misses
 
-    def gradient_approx(self):
-        pass
+    def theta_grad_approx(self, X, y, regularization_parameter):
+        grad = [np.zeros(t.shape) for t in [self.theta1, self.theta2]]
+        eps = 1e-4
+        thetas = [self.theta1, self.theta2]
+        for l in trange(thetas):
+            for i in range(thetas[l].shape[0]):
+                for j in range(thetas[l].shape[1]):
+                    thetas[l][i][j] += eps
+                    cost_plus = self.cost_function(X, y, regularization_parameter)
+                    thetas[l][i][j] -= 2 * eps
+                    cost_minus = self.cost_function(X, y, regularization_parameter)
+                    thetas[l][i][j] += eps
+                    grad[l][i][j] = (cost_plus - cost_minus) / (2 * eps)
+        return grad
 
-    def gradient_checking(self):
-        pass
-            
     def save(self):
         pass
-
-

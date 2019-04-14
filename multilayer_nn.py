@@ -20,8 +20,9 @@ def sigmoid(z):
 class MultiLayerNeuralNetwork:
 
     def __init__(self, layers, random_seed = None):
-        state = np.random.RandomState(random_seed)
-        self.thetas = [state.rand(nl, l + 1) for l, nl in zip(layers, layers[1:])]
+        state = np.random.RandomState(0)
+        eps = sqrt(6) / (sqrt(layers[0] + layers[-1]))
+        self.thetas = [state.rand(nl, l + 1) * 2 * eps - eps for l, nl in zip(layers, layers[1:])]
         self.layers = layers
         self.errors = []
 
@@ -38,7 +39,7 @@ class MultiLayerNeuralNetwork:
         for theta in thetas:
             z = a @ theta.T
             a = sigmoid(z)
-            a = np.concatenate([np.ones((m, 1)), a], 1) #add bias unit
+            a = np.hstack([np.ones((m, 1)), a]) #add bias unit
             ret.append(a)
         ret[-1] = ret[-1][:, 1:] #remove bias unit from h_x
         return ret
@@ -52,40 +53,32 @@ class MultiLayerNeuralNetwork:
             thetas = self.thetas
         m = X.shape[0]
         h_x = self.predict(X, thetas)        
-        error = -1/m * np.sum((y * np.log(h_x) + (1 - y) * np.log(1 - h_x)))
-        regularization = regularization_parameter / m * sum(np.sum(theta ** 2) for theta in thetas)
+        error = -1/m * np.sum(y * np.log(h_x) + (1 - y) * np.log(1 - h_x))
+        regularization = regularization_parameter / m * sum(np.sum(theta[:, 1:] ** 2) for theta in thetas)
         return error + regularization
 
     def theta_grad(self, X, y, regularization_parameter, thetas = None):
         if thetas is None:
             thetas = self.thetas
         m = X.shape[0]
-        errors = [np.zeros(t.shape) for t in thetas]
-
-        #backprop
+        D = [np.zeros(t.shape) for t in thetas]
+        A = self.forward_prop(X, thetas)
+        L = len(self.layers)
         for t in range(m):
-            x = X[[t]].T
-            *A, h_x = self.forward_prop(x.T, thetas)
-            h_x = h_x.T
-            A = [a.T for a in A]
             yt = y[[t]].T
-            delta = h_x - yt            
-            deltas = [delta]
-            for theta, a in zip(thetas[1:][::-1], A[::-1]):
-                delta = theta.T @ delta * a * (1 - a)
-                delta = delta[1:, :] #remove bias error
-                deltas.append(delta)
-            deltas = deltas[::-1]
-            for err, delta, a in zip(errors, deltas, A):
-                print(err.shape, delta.shape, a.shape)
-                err += delta @ a.T
+            AT = [a[[t]].T for a in A]
+            deltas = [None] * L
+            deltas[-1] = AT[-1] - yt
+            for l in range(L - 2, 0, -1):
+                deltas[l] = thetas[l].T @ deltas[l+1] * AT[l] * (1 - AT[l])
+                deltas[l] = deltas[l][1:, :]
+            for i in range(len(thetas)):
+                D[i] += deltas[i+1] @ AT[i].T
+        grads = [d / m for d in D]
+        for grad, theta in zip(grads, thetas):
+            grad[:, 1:] += regularization_parameter / m * theta[:, 1:]
+        return grads
 
-        D = [error / m for error in errors]
-        for d, theta in zip(D, thetas):
-            d[:, 1:] += regularization_parameter / m * theta[:, 1:]
-        return D
-
-    
     def theta_grad_approx(self, X, y, regularization_parameter, thetas = None):
         if thetas is None:
             thetas = [np.copy(t) for t in self.thetas]
@@ -106,7 +99,6 @@ class MultiLayerNeuralNetwork:
             
 
     def train(self, X, y, epochs, learning_rate, regularization_parameter):
-        m = X.shape[0]
         for i in trange(epochs):
             theta_grads = self.theta_grad(X, y, regularization_parameter)
             for theta, grad in zip(self.thetas, theta_grads):
