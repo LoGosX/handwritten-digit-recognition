@@ -120,10 +120,12 @@ class MultiLayerNeuralNetwork:
         m = X.shape[0]
         y = transform_labels(y)
         X = np.hstack((np.ones((m, 1)), X))
-        for i in trange(epochs):
-            b = self.state.randint(0, m)
-            x = X[b:b+batch]
-            yb = y[b:b+batch]
+        yX = np.hstack((y, X))
+        for _ in trange(epochs):
+            self.state.shuffle(yX)
+            y, X = yX[:, :10], yX[:, 10:]
+            x = X[:batch]
+            yb = y[:batch]
             theta_grads = self.theta_grad(x, yb, regularization_parameter)
             for theta, grad in zip(self.thetas, theta_grads):
                 theta -= learning_rate * grad

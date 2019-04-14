@@ -50,11 +50,7 @@ def main():
 
     #training neural network
     params = (x_train, y_train, epochs, learning_rate, regularization_parameter)
-    try:
-        nn.train(*params)
-    except Exception as e:
-        print(e)
-        pass
+    nn.train(*params)
 
     #plot cost for each iteration
     visualize.plot_cost(nn.errors)
