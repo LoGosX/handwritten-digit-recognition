@@ -13,7 +13,7 @@ def main():
     #load train and test data
     print('Loading test and train data from "%s".' % DATASETS_PATH)
     x_train, y_train, x_test, y_test = load_data()
-    
+
     #display it to check if everything is ok
     print('Visualizing first 25 examples')
     visualize.display_data(x_train, 5, 5)
@@ -32,8 +32,8 @@ def main():
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
     number_of_hidden_units = [100] #number of hidden units in 1'st (and, for now, only) layer
-    epochs = 20
-    learning_rate = 0.3
+    epochs = 400
+    learning_rate = 0.1
     regularization_parameter = 1
     layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
 

@@ -34,6 +34,7 @@ class MultiLayerNeuralNetwork:
         self.thetas = [state.rand(nl, l + 1) * 2 * eps - eps for l, nl in zip(layers, layers[1:])]
         self.layers = layers
         self.errors = []
+        self.state = state
 
 
     def cost_function(self, X, y, regularization_parameter, thetas = None):
@@ -112,14 +113,21 @@ class MultiLayerNeuralNetwork:
             print("Gradient checking succeeded")
         
     def train(self, X, y, epochs, learning_rate, regularization_parameter):
+        """
+        Perform Stochastic Gradient Descend
+        """
+        batch = 1000
         m = X.shape[0]
         y = transform_labels(y)
         X = np.hstack((np.ones((m, 1)), X))
         for i in trange(epochs):
-            theta_grads = self.theta_grad(X, y, regularization_parameter)
+            b = self.state.randint(0, m)
+            x = X[b:b+batch]
+            yb = y[b:b+batch]
+            theta_grads = self.theta_grad(x, yb, regularization_parameter)
             for theta, grad in zip(self.thetas, theta_grads):
                 theta -= learning_rate * grad
-            self.errors.append(self.cost_function(X, y, regularization_parameter))
+            self.errors.append(self.cost_function(x, yb, regularization_parameter))
 
     def predict(self, X):
         m = X.shape[0]
