@@ -32,23 +32,26 @@ def main():
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
     number_of_hidden_units = [100] #number of hidden units in 1'st (and, for now, only) layer
-    epochs = 400
-    learning_rate = 0.1
-    regularization_parameter = 1
+    epochs = 200
+    learning_rate = 0.3
+    regularization_parameter = 0.1
     layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
 
     print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units (not including a bias units)".format(number_of_inputs, number_of_outputs, len(layers) - 2, number_of_hidden_units))
     nn = MultiLayerNeuralNetwork(layers, random_seed = 0)
     
     if GRADIENT_CHECKING:
-        nn.gradient_checking(x_test[:100], y_test[:100], regularization_parameter)
-
+        print("Performing gradient checking.")
+        nn.gradient_checking(x_test[:10], y_test[:10], regularization_parameter)
+    else:
+        print("Skipping gradient checking. If you want to perform gradient checking, change GRADIENT_CHECKING flag to True.")
     #x_train = x_train / 255 # "feature scaling"
     #x_test = x_test / 255 # "feature scaling"
 
 
 
     #training neural network
+    print("Training NN:")
     params = (x_train, y_train, epochs, learning_rate, regularization_parameter)
     nn.train(*params)
 
