@@ -6,98 +6,78 @@ import visualize
 import matplotlib.pyplot as plt
 
 
-GRADIENT_CHECKING = True
+GRADIENT_CHECKING = False
 
-def gradient_checking(nn, X, y, regularization_parameter):
-    grad = nn.theta_grad(X, y, regularization_parameter)
-    grad_approx = nn.theta_grad_approx(X, y, regularization_parameter)
-    maks = -10000
-    for l in range(len(grad)):
-        print('-' * 20)
-        for i in range(grad[l].shape[0]):
-            for j in range(grad[l].shape[1]):
-                maks = max(maks, abs(grad[l][i][j] - grad_approx[l][i][j]))
-                print("({:3d},{:3d},{:3d}) {:5f}\t{:5f}\t{}".format(l,i,j, grad[l][i][j], grad_approx[l][i][j], '!' if abs(grad[l][i][j] - grad_approx[l][i][j]) >= 0.0001 else "ok" ))
-    return maks
 
 def main():
     #load train and test data
     print('Loading test and train data from "%s".' % DATASETS_PATH)
     x_train, y_train, x_test, y_test = load_data()
-  
+    
     #display it to check if everything is ok
     print('Visualizing first 25 examples')
     visualize.display_data(x_train, 5, 5)
     plt.show()
 
-   
+    x_train = x_train[:60000]
+    y_train = y_train[:60000]
     x_train = x_train / 255
     x_test = x_test / 255
 
     #transforming each training and test example to 1D
     x_train = x_train.reshape((x_train.shape[0], x_train.shape[1] * x_train.shape[2]))
     x_test = x_test.reshape((x_test.shape[0], x_test.shape[1] * x_test.shape[2]))
-    x_train = np.concatenate([np.ones((x_train.shape[0], 1)), x_train], 1)
-    x_test = np.concatenate([np.ones((x_test.shape[0], 1)), x_test], 1)
-
-    #transforming each label to a vector of 0's, where vector[label] = 1
-    #TODO: vectorize the loop
-    tmp = np.zeros((y_train.shape[0], 10))
-    for i in range(tmp.shape[0]):
-        tmp[i, int(y_train[i])] = 1
-    y_train = tmp
 
     #1 pick a network architecture
     number_of_inputs = 28 * 28 #dimensions of the images
     number_of_outputs = 10 #10 classes - digits from 0 to 9
-    number_of_hidden_units = [8, 4] #number of hidden units in 1'st (and, for now, only) layer
-    epochs = 5 
+    number_of_hidden_units = [100] #number of hidden units in 1'st (and, for now, only) layer
+    epochs = 20
     learning_rate = 0.3
-    regularization_parameter = 0.1
+    regularization_parameter = 1
     layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
 
     print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units (not including a bias units)".format(number_of_inputs, number_of_outputs, len(layers) - 2, number_of_hidden_units))
-    #Neural Network used to train data
-    #nn1 = OneLayerNeuralNetwork(num_inputs = number_of_inputs, num_outputs = number_of_outputs, num_hidden = number_of_hidden_units[0], epsilon = epsilon, random_seed = 0)
-    nn1 = MultiLayerNeuralNetwork(layers, random_seed = 0)
+    nn = MultiLayerNeuralNetwork(layers, random_seed = 0)
     
     if GRADIENT_CHECKING:
-        print("Performing gradient checking")
-        max_err = gradient_checking(nn1, x_train[[0]], y_train[[0]], regularization_parameter)
-        print("Max difference in calculated gradients:", max_err)
+        nn.gradient_checking(x_test[:100], y_test[:100], regularization_parameter)
 
     #x_train = x_train / 255 # "feature scaling"
     #x_test = x_test / 255 # "feature scaling"
 
-    if False:
-        print("Gradient checking\nApprox | Calculated by NN")
-        grad, approx, mean = gradient_checking(x_train[0:100], y_train[0:100], layers, 0)
-        for i in range(approx.size):
-            print("[{}]:\t{:5f}\t{:5f}".format(i, approx[i], grad[i]))
-        print("Mean difference", mean)
-    print("Shape of training set: {}x{}\nShape of training labels: {}x{}".format(*x_train.shape, *y_train.shape))
 
 
     #training neural network
     params = (x_train, y_train, epochs, learning_rate, regularization_parameter)
     try:
-        nn1.train(*params)
+        nn.train(*params)
     except Exception as e:
+        print(e)
         pass
 
     #plot cost for each iteration
-    visualize.plot_cost(nn1.errors)
+    visualize.plot_cost(nn.errors)
     plt.show()
     plt.close()
     
-    print("Interactive predictions. Press any key to proceed. Press mouse to stop.")
+
     m = x_test.shape[0]
+    predictions = nn.predict(x_test)
+    hits = 0
+    misses = 0
     for i in range(m):
-        x = x_test[[i]]
+        if predictions[i] == y_test[i]:
+            hits += 1
+        else:
+            misses += 1
+    print("Accuracy: {} missed, {} hits. ({}%)".format(misses, hits, hits / (hits + misses) * 100))
+    print("Interactive predictions. Press any key to proceed. Press mouse to stop.")
+    for i in range(m):
+        x = x_test[i]
         label = y_test[i]
-        prediction = np.argmax(nn1.predict(x))
-        print("Label: {}. Prediction: {}. Click any key to stop.".format(label, prediction))
-        visualize.display_digit(x[:, 1:].reshape((28,28)), label, prediction)
+        print("Label: {}. Prediction: {}. Click any key to stop.".format(label, predictions[i]))
+        visualize.display_digit(x.reshape((28,28)), label, predictions[i])
         plt.draw()
         if plt.waitforbuttonpress() is False:
             break
