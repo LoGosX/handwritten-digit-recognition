@@ -8,6 +8,15 @@ import matplotlib.pyplot as plt
 
 GRADIENT_CHECKING = False
 
+#Pick a network architecture
+NUMBER_OF_INPUTS = 28 * 28 #dimensions of the images
+NUMBER_OF_OUTPUTS = 10 #10 classes - digits from 0 to 9
+NUMBER_OF_HIDDEN_UNITS = [100, 100] #number of hidden units in 1'st (and, for now, only) layer
+EPOCHS = 400
+LEARNING_RATE = 0.3
+REGULARIZATION_PARAMETER = 0.1
+LAYERS = [NUMBER_OF_INPUTS, *NUMBER_OF_HIDDEN_UNITS, NUMBER_OF_OUTPUTS]
+
 
 def main():
     #load train and test data
@@ -28,21 +37,12 @@ def main():
     x_train = x_train.reshape((x_train.shape[0], x_train.shape[1] * x_train.shape[2]))
     x_test = x_test.reshape((x_test.shape[0], x_test.shape[1] * x_test.shape[2]))
 
-    #1 pick a network architecture
-    number_of_inputs = 28 * 28 #dimensions of the images
-    number_of_outputs = 10 #10 classes - digits from 0 to 9
-    number_of_hidden_units = [100] #number of hidden units in 1'st (and, for now, only) layer
-    epochs = 200
-    learning_rate = 0.3
-    regularization_parameter = 0.1
-    layers = [number_of_inputs, *number_of_hidden_units, number_of_outputs]
-
-    print("Creating a NN with:\n{} input units\n{} output units\n{} hidden layers with {} hidden units (not including a bias units)".format(number_of_inputs, number_of_outputs, len(layers) - 2, number_of_hidden_units))
-    nn = MultiLayerNeuralNetwork(layers, random_seed = 0)
+    print("Creating a NN with:\n{} input units\n{} output units\n{} hidden LAYERS with {} hidden units (not including a bias units)".format(NUMBER_OF_INPUTS, NUMBER_OF_OUTPUTS, len(LAYERS) - 2, NUMBER_OF_HIDDEN_UNITS))
+    nn = MultiLayerNeuralNetwork(LAYERS, random_seed = 0)
     
     if GRADIENT_CHECKING:
         print("Performing gradient checking.")
-        nn.gradient_checking(x_test[:10], y_test[:10], regularization_parameter)
+        nn.gradient_checking(x_test[:10], y_test[:10], REGULARIZATION_PARAMETER)
     else:
         print("Skipping gradient checking. If you want to perform gradient checking, change GRADIENT_CHECKING flag to True.")
     #x_train = x_train / 255 # "feature scaling"
@@ -52,16 +52,16 @@ def main():
 
     #training neural network
     print("Training NN:")
-    params = (x_train, y_train, epochs, learning_rate, regularization_parameter)
+    params = (x_train, y_train, EPOCHS, LEARNING_RATE, REGULARIZATION_PARAMETER)
     nn.train(*params)
-
-    #plot cost for each iteration
-    visualize.plot_cost(nn.errors)
-    plt.show()
-    plt.close()
     
-
+    #randomly shuffle test data
     m = x_test.shape[0]
+    yX = np.hstack([y_test.reshape((m, 1)), x_test])
+    np.random.shuffle(yX)
+    y_test, x_test = yX[:, [0]], yX[:, 1:]
+
+    
     predictions = nn.predict(x_test)
     hits = 0
     misses = 0
@@ -71,6 +71,11 @@ def main():
         else:
             misses += 1
     print("Accuracy: {} missed, {} hits. ({}%)".format(misses, hits, hits / (hits + misses) * 100))
+    
+    #plot cost for each iteration
+    visualize.plot_cost(nn.errors)
+    plt.show()
+
     print("Interactive predictions. Press any key to proceed. Press mouse to stop.")
     for i in range(m):
         x = x_test[i]

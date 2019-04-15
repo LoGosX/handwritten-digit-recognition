@@ -125,7 +125,7 @@ class MultiLayerNeuralNetwork:
         y = transform_labels(y)
         X = np.hstack((np.ones((m, 1)), X))
         yX = np.hstack((y, X))
-        for _ in trange(epochs):
+        for _ in trange(epochs, desc = 'GD:'):
             self.state.shuffle(yX)
             y, X = yX[:, :10], yX[:, 10:]
             x = X[:batch]
